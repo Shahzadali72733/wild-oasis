@@ -1,23 +1,29 @@
-import styled from "styled-components";
 import GlobalStyles from "./styles/GlobalStyles";
-import Button from "./ui/Button";
-import Input from "./ui/Input";
-import Heading from "./ui/Heading";
-const Divstyle = styled.div`
-background: var(--color-brand-200);
-`;
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Dashboard from "./pages/Dashboard";
+import Account from "./pages/Account";
+import Bookings from "./pages/Bookings";
+import Cabins from "./pages/Cabins";
+import Settings from "./pages/Settings";
+import NewUsers from "./pages/Users";
+import Login from "./pages/Login";
 
 export default function App() {
   return (
     <>
-    <GlobalStyles />
-    <Divstyle>
-      <Heading>Hello vite</Heading>
-      <Button>Log In</Button>
-      <Button>Sign Up</Button>
-      <Input placeholder="please enter your name"></Input>
-      <Input placeholder="Enter number of Guest" type="number"></Input>
-    </Divstyle>
-  </>
+      <GlobalStyles />
+      <BrowserRouter>
+        <Routes>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="account" element={<Account />} />
+          <Route path="booking" element={<Bookings />} />
+          <Route path="cabins" element={<Cabins />} />
+          <Route path="Settings" element={<Settings />} />
+          <Route path="user" element={<NewUsers />} />
+          <Route path="login" element={<Login />} />
+        </Routes>
+      </BrowserRouter>
+    </>
   );
 }
