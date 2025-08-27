@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import styled from "styled-components";
 import Heading from "../ui/Heading";
 import Row from "../ui/Row";
-import { getCabins } from "../services/apicabins";
+import { getCabins, deleteCabin } from "../services/apicabins";
 import supabase from "../services/supabase";
 
+// ---------------- STYLES ----------------
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
@@ -65,13 +66,18 @@ const DeleteBtn = styled.button`
   }
 `;
 
+// ---------------- COMPONENT ----------------
 function Cabins() {
   const [cabins, setCabins] = useState([]);
 
+  // Load cabins initially
   useEffect(() => {
-    getCabins().then((data) => setCabins(data));
+    getCabins().then((data) => {
+      if (data) setCabins(data);
+    });
   }, []);
 
+  // Listen to realtime changes
   useEffect(() => {
     const channel = supabase
       .channel("cabins-realtime")
@@ -79,8 +85,6 @@ function Cabins() {
         "postgres_changes",
         { event: "*", schema: "public", table: "cabins" },
         (payload) => {
-          console.log("DB change received:", payload);
-
           if (payload.eventType === "INSERT") {
             setCabins((prev) => [...prev, payload.new]);
           }
@@ -105,6 +109,16 @@ function Cabins() {
     };
   }, []);
 
+  // 🔥 Delete handler
+  async function handleDelete(id) {
+    try {
+      await deleteCabin(id); // calls API
+      // No need to manually update state — realtime subscription will remove it
+    } catch (error) {
+      console.error("Error deleting cabin:", error);
+    }
+  }
+
   return (
     <div>
       <Row type="horizontal">
@@ -123,24 +137,37 @@ function Cabins() {
           </tr>
         </thead>
         <tbody>
-          {cabins.map((cabin) => (
-            <tr key={cabin.id}>
-              <Td>
-                <Img src={cabin.image} alt={cabin.name} />
-                <span>{cabin.name}</span>
-              </Td>
-              <Td>Fits up to {cabin.maxCapacity} guests</Td>
-              <Td>
-                <Price>${cabin.regularPrice}.00</Price>
-              </Td>
-              <Td>
-                <Discount>${cabin.discount}.00</Discount>
-              </Td>
-              <Td>
-                <DeleteBtn>Delete</DeleteBtn>
-              </Td>
+          {cabins && cabins.length > 0 ? (
+            cabins.map((cabin) => (
+              <tr key={cabin.id}>
+                <Td>
+                  <Img
+                    src={cabin.image || "/placeholder.jpg"}
+                    alt={cabin.name || "No name"}
+                  />
+                  <span>{cabin.name || "Unnamed cabin"}</span>
+                </Td>
+                <Td>
+                  Fits up to {cabin.maxCapacity || "?"} guests
+                </Td>
+                <Td>
+                  <Price>${cabin.regularPrice || 0}.00</Price>
+                </Td>
+                <Td>
+                  <Discount>${cabin.discount || 0}.00</Discount>
+                </Td>
+                <Td>
+                  <DeleteBtn onClick={() => handleDelete(cabin.id)}>
+                    Delete
+                  </DeleteBtn>
+                </Td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <Td colSpan="5">No cabins found</Td>
             </tr>
-          ))}
+          )}
         </tbody>
       </Table>
     </div>

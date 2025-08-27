@@ -10,5 +10,13 @@ let { data, error } = await supabase
     throw new Error ("Cabins cound not be loaded");
   }
   return data;
+}
 
+export async function deleteCabin(id) {
+  const { error } = await supabase.from("cabins").delete().eq("id", id);
+
+  if (error) {
+    console.error(error);
+    throw new Error("Cabin could not be deleted");
+  }
 }
