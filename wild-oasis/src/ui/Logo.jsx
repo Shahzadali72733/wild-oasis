@@ -1,7 +1,8 @@
 import styled from "styled-components";
 
 const StyledLogo = styled.div`
-  text-align: center;
+  padding-top:3rem ;
+  text-align:center;
 `;
 
 const Img = styled.img`
@@ -12,7 +13,7 @@ const Img = styled.img`
 function Logo() {
   return (
     <StyledLogo>
-      <Img src="/data/img/logo-dark.png" alt="Logo" />
+      <Img src="https://xllthasqbpwnbmqkxrnr.supabase.co/storage/v1/object/public/avatar/logo-light.png" alt="Logo" />
     </StyledLogo>
   );
 }

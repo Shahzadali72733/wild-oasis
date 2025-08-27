@@ -4,7 +4,7 @@ import Sidebar from "./Sidebar";
 import styled from "styled-components";
 
 const Main = styled.main`
-  background: var(--color-brand-50);
+  background: var(--color-brand-200);
   padding: 2rem;
 `;
 
