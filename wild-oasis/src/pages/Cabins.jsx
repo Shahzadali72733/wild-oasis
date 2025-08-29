@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import styled from "styled-components";
-import Heading from "../ui/Heading";
-import Row from "../ui/Row";
 import { getCabins, deleteCabin } from "../services/apicabins";
-import supabase from "../services/supabase";
+import toast from "react-hot-toast";
+import Heading from "../ui/Heading";
+import Button from "../ui/Button";
+import CreateCabinForm from "../features/cabins/CreateCabinForm";
+import Row from '../ui/Row';
 
-// ---------------- STYLES ----------------
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
@@ -64,58 +65,90 @@ const DeleteBtn = styled.button`
     background: #ef4444;
     color: white;
   }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 `;
+
+// ---------------- SPINNER ----------------
+const SpinnerWrapper = styled.div`
+  font-size: 20px;
+  position: relative;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+`;
+
+const Blade = styled.div`
+  position: absolute;
+  left: 0.4629em;
+  bottom: 0;
+  width: 0.074em;
+  height: 0.2777em;
+  border-radius: 0.0555em;
+  background-color: transparent;
+  transform-origin: center -0.2222em;
+  animation: spinner-fade9234 1s infinite linear;
+
+  @keyframes spinner-fade9234 {
+    0% {
+      background-color: #69717d;
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+`;
+
+function Spinner() {
+  return (
+    <SpinnerWrapper>
+      {Array.from({ length: 12 }).map((_, i) => (
+        <Blade
+          key={i}
+          style={{
+            transform: `rotate(${i * 30}deg)`,
+            animationDelay: `${i * 0.083}s`,
+          }}
+        />
+      ))}
+    </SpinnerWrapper>
+  );
+}
 
 // ---------------- COMPONENT ----------------
 function Cabins() {
   const [cabins, setCabins] = useState([]);
+  const [loadingId, setLoadingId] = useState(null);
+const [showForm , setShowForm] = useState(false);
 
-  // Load cabins initially
   useEffect(() => {
-    getCabins().then((data) => {
-      if (data) setCabins(data);
-    });
+    async function loadCabins() {
+      try {
+        const data = await getCabins();
+        setCabins(data);
+      } catch (err) {
+        console.error("Error loading cabins:", err);
+        toast.error("Failed to load cabins");
+      }
+    }
+    loadCabins();
   }, []);
 
-  // Listen to realtime changes
-  useEffect(() => {
-    const channel = supabase
-      .channel("cabins-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "cabins" },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            setCabins((prev) => [...prev, payload.new]);
-          }
-          if (payload.eventType === "UPDATE") {
-            setCabins((prev) =>
-              prev.map((cabin) =>
-                cabin.id === payload.new.id ? payload.new : cabin
-              )
-            );
-          }
-          if (payload.eventType === "DELETE") {
-            setCabins((prev) =>
-              prev.filter((cabin) => cabin.id !== payload.old.id)
-            );
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  // 🔥 Delete handler
+  // Delete cabin
   async function handleDelete(id) {
     try {
-      await deleteCabin(id); // calls API
-      // No need to manually update state — realtime subscription will remove it
+      setLoadingId(id);
+      await deleteCabin(id);
+      setCabins((prev) => prev.filter((cabin) => cabin.id !== id));
+      toast.success("Cabin deleted successfully!");
     } catch (error) {
       console.error("Error deleting cabin:", error);
+      toast.error("Failed to delete cabin. Please try again.");
+    } finally {
+      setLoadingId(null);
     }
   }
 
@@ -147,9 +180,7 @@ function Cabins() {
                   />
                   <span>{cabin.name || "Unnamed cabin"}</span>
                 </Td>
-                <Td>
-                  Fits up to {cabin.maxCapacity || "?"} guests
-                </Td>
+                <Td>Fits up to {cabin.maxCapacity || "?"} guests</Td>
                 <Td>
                   <Price>${cabin.regularPrice || 0}.00</Price>
                 </Td>
@@ -157,8 +188,11 @@ function Cabins() {
                   <Discount>${cabin.discount || 0}.00</Discount>
                 </Td>
                 <Td>
-                  <DeleteBtn onClick={() => handleDelete(cabin.id)}>
-                    Delete
+                  <DeleteBtn
+                    onClick={() => handleDelete(cabin.id)}
+                    disabled={loadingId === cabin.id}
+                  >
+                    {loadingId === cabin.id ? <Spinner /> : "Delete"}
                   </DeleteBtn>
                 </Td>
               </tr>
@@ -169,9 +203,17 @@ function Cabins() {
             </tr>
           )}
         </tbody>
-      </Table>
+      </Table >
+     <Button onClick={()=> setShowForm((show)=>
+      !show)}>
+          Add Cabin
+        </Button>
+        {showForm && <CreateCabinForm />}
     </div>
   );
 }
 
 export default Cabins;
+
+
+

@@ -1,73 +1,211 @@
-// import styled from "styled-components";
-// import { useQuery } from "@tanstack/react-query";
-// import { getCabins } from "../services/apiCabins";
-// import Spinner from "../ui/Spinner";
-
-// const Table = styled.div`
-//   border: 1px solid var(--color-grey-200);
-
-//   font-size: 1.4rem;
-//   background-color: var(--color-grey-0);
-//   border-radius: 7px;
-//   overflow: hidden;
-// `;
-
-// const TableHeader = styled.header`
-//   display: grid;
-//   grid-template-columns: 0.6fr 1.8fr 2.2fr 1fr 1fr 1fr;
-//   column-gap: 2.4rem;
-//   align-items: center;
-
-//   background-color: var(--color-grey-50);
-//   border-bottom: 1px solid var(--color-grey-100);
-//   text-transform: uppercase;
-//   letter-spacing: 0.4px;
-//   font-weight: 600;
-//   color: var(--color-grey-600);
-//   padding: 1.6rem 2.4rem;
-// `;
+import { useEffect, useState } from "react";
+import styled from "styled-components";
+import Row from "../ui/Row";
+import { getCabins, deleteCabin } from "../services/apicabins";
+import toast from "react-hot-toast";
+import Heading from "../../ui/Heading";
 
 
-// function CabinTable() {
-//   const {
-//     data: cabins, 
-//     isLoading,
-//     error,
-//   } = useQuery({
-//     queryKey: ["cabins"], 
-//     queryFn: getCabins,  
-//   });
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  overflow: hidden;
+`;
 
-//   if (isLoading) return <Spinner />;
-//   if (error) return <p className="text-red-500">Error: {error.message}</p>;
+const Th = styled.th`
+  text-align: left;
+  padding: 16px;
+  background: var(--color-grey-200);
+  font-weight: 600;
+  font-size: 14px;
+  color: #374151;
+`;
 
-//   return (
-//     <div role="table" className="grid gap-2">
-//       <div role="row" className="grid grid-cols-6 font-bold border-b pb-2">
-//         <div>Image</div>
-//         <div>Name</div>
-//         <div>Capacity</div>
-//         <div>Price</div>
-//         <div>Discount</div>
-//         <div>Actions</div>
-//       </div>
+const Td = styled.td`
+  padding: 8px 16px;
+  font-size: 14px;
+  color: var(--color-grey-800);
+  border-right: 1px solid darkgrey;
 
-//       {cabins.map((cabin) => (
-//         <div
-//           key={cabin.id}
-//           role="row"
-//           className="grid grid-cols-6 items-center border-b py-2"
-//         >
-//           <img src={cabin.image} alt={cabin.name} className="w-16 h-16 object-cover" />
-//           <div>{cabin.name}</div>
-//           <div>{cabin.maxCapacity}</div>
-//           <div>${cabin.regularPrice}</div>
-//           <div>{cabin.discount ? `-${cabin.discount}` : "0"}</div>
-//           <button className="text-red-500">Delete</button>
-//         </div>
-//       ))}
-//     </div>
-//   );
-// }
+  &:first-child {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+`;
 
-// export default CabinTable;
+const Img = styled.img`
+  width: 100px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+`;
+
+const Price = styled.span`
+  font-weight: 600;
+  color: #111827;
+`;
+
+const Discount = styled.span`
+  color: var(--color-green-700);
+  font-weight: 600;
+`;
+
+const DeleteBtn = styled.button`
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+
+  &:hover {
+    background: #ef4444;
+    color: white;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
+// ---------------- SPINNER ----------------
+const SpinnerWrapper = styled.div`
+  font-size: 20px;
+  position: relative;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+`;
+
+const Blade = styled.div`
+  position: absolute;
+  left: 0.4629em;
+  bottom: 0;
+  width: 0.074em;
+  height: 0.2777em;
+  border-radius: 0.0555em;
+  background-color: transparent;
+  transform-origin: center -0.2222em;
+  animation: spinner-fade9234 1s infinite linear;
+
+  @keyframes spinner-fade9234 {
+    0% {
+      background-color: #69717d;
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+`;
+
+function Spinner() {
+  return (
+    <SpinnerWrapper>
+      {Array.from({ length: 12 }).map((_, i) => (
+        <Blade
+          key={i}
+          style={{
+            transform: `rotate(${i * 30}deg)`,
+            animationDelay: `${i * 0.083}s`,
+          }}
+        />
+      ))}
+    </SpinnerWrapper>
+  );
+}
+
+// ---------------- COMPONENT ----------------
+function CabinTable() {
+  const [cabins, setCabins] = useState([]);
+  const [loadingId, setLoadingId] = useState(null);
+
+  // Fetch cabins
+  useEffect(() => {
+    async function loadCabins() {
+      try {
+        const data = await getCabins();
+        setCabins(data);
+      } catch (err) {
+        console.error("Error loading cabins:", err);
+        toast.error("Failed to load cabins");
+      }
+    }
+    loadCabins();
+  }, []);
+
+  // Delete cabin
+  async function handleDelete(id) {
+    try {
+      setLoadingId(id);
+      await deleteCabin(id);
+      setCabins((prev) => prev.filter((cabin) => cabin.id !== id));
+      toast.success("Cabin deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting cabin:", error);
+      toast.error("Failed to delete cabin. Please try again.");
+    } finally {
+      setLoadingId(null);
+    }
+  }
+
+  return (
+    <div>
+      <Row type="horizontal">
+        <Heading as="h1">All cabins</Heading>
+        <p style={{ cursor: "pointer", color: "#6b7280" }}>Filter / Sort</p>
+      </Row>
+
+      <Table>
+        <thead>
+          <tr>
+            <Th>Cabin</Th>
+            <Th>Capacity</Th>
+            <Th>Price</Th>
+            <Th>Discount</Th>
+            <Th>Action</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {cabins && cabins.length > 0 ? (
+            cabins.map((cabin) => (
+              <tr key={cabin.id}>
+                <Td>
+                  <Img
+                    src={cabin.image || "/placeholder.jpg"}
+                    alt={cabin.name || "No name"}
+                  />
+                  <span>{cabin.name || "Unnamed cabin"}</span>
+                </Td>
+                <Td>Fits up to {cabin.maxCapacity || "?"} guests</Td>
+                <Td>
+                  <Price>${cabin.regularPrice || 0}.00</Price>
+                </Td>
+                <Td>
+                  <Discount>${cabin.discount || 0}.00</Discount>
+                </Td>
+                <Td>
+                  <DeleteBtn
+                    onClick={() => handleDelete(cabin.id)}
+                    disabled={loadingId === cabin.id}
+                  >
+                    {loadingId === cabin.id ? <Spinner /> : "Delete"}
+                  </DeleteBtn>
+                </Td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <Td colSpan="5">No cabins found</Td>
+            </tr>
+          )}
+        </tbody>
+      </Table >
+     
+    </div>
+  );
+}
+
+export default CabinTable;
